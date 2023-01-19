@@ -1,0 +1,67 @@
+name: Node.js CI
+'on':
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: npm
+      - run: npm install
+      - run: npm run build
+      - name: Cache node modules
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: >-
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{
+            hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: built-project
+          path: build
+          retention-days: 1
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: npm
+      - name: Download build for testing
+        uses: actions/download-artifact@v3
+        with:
+          name: built-project
+      - run: npm install
+      - run: npm run pipeline-test
+  # deploy:
+  #   needs: [build, test]
+  #   runs-on: ubuntu-latest
+  #   name: 'Deploy to Netlify'
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Download build for deployment
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: built-project
+  #     - uses: jsmrcaga/action-netlify-deploy@v1.1.0
+  #       with:
+  #         NETLIFY_AUTH_TOKEN: ${{ secrets.MY_TOKEN_SECRET }}
+  #         NETLIFY_SITE_ID: ${{ secrets.MY_NETLIFY_SITE_ID }}
+  #         NETLIFY_DEPLOY_TO_PROD: true
+  #         build_command: "echo build command not required since we are using artifacts"
+          
